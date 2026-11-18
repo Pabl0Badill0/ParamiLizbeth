@@ -35,7 +35,7 @@
   #intro.gone{opacity:0; visibility:hidden}
   .intro-top{text-align:center; animation:rise 1.6s ease both}
   .intro-top small{display:block; letter-spacing:.35em; text-transform:uppercase; font-size:13px; color:var(--gold-2); opacity:.8}
-  .intro-top h1{font-family:var(--script); font-weight:400; font-size:clamp(44px,9vw,72px); color:var(--gold-2); line-height:1.1; margin-top:6px; text-shadow:0 0 30px rgba(201,162,107,.35)}
+  .intro-top h1{cursor:default; -webkit-tap-highlight-color:transparent; user-select:none; font-family:var(--script); font-weight:400; font-size:clamp(44px,9vw,72px); color:var(--gold-2); line-height:1.1; margin-top:6px; text-shadow:0 0 30px rgba(201,162,107,.35)}
 
   .envelope{
     position:relative; width:min(86vw,440px); aspect-ratio:1.55; cursor:pointer;
@@ -98,6 +98,32 @@
   .lock-toast.show{opacity:1}
   .envelope.shake{animation:shake .5s ease!important}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px) rotate(-2deg)}40%{transform:translateX(9px) rotate(2deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+
+  #pv{position:fixed; inset:0; z-index:30; background:rgba(10,3,6,.85); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; padding:20px}
+  #pv.open{display:flex}
+  #pv form{background:#240c14; border:1px solid rgba(201,162,107,.4); border-radius:14px; padding:26px 22px; width:min(90vw,320px); text-align:center}
+  .pv-t{font-size:28px; margin-bottom:12px}
+  #pvIn{width:100%; padding:12px 14px; border-radius:8px; border:1px solid rgba(201,162,107,.5); background:rgba(255,255,255,.06); color:#fbf5ec; font-family:var(--serif); font-size:18px; outline:none}
+  .pv-err{color:#ff9fb3; font-style:italic; font-size:15px; min-height:22px; margin:6px 0}
+  .pv-b{display:flex; gap:10px; justify-content:center}
+  .pv-b .btn{margin:0}
+  #pv form.bad{animation:shake .45s ease}
+
+  #fsBtn{position:fixed; top:14px; right:14px; z-index:16; display:none; align-items:center; gap:8px; height:40px; padding:0 14px; border-radius:22px; cursor:pointer;
+    border:1px solid rgba(201,162,107,.55); background:rgba(26,9,16,.65); backdrop-filter:blur(6px); color:var(--gold-2);
+    font-family:var(--serif); font-size:15px; letter-spacing:.04em; box-shadow:0 6px 18px rgba(0,0,0,.35); transition:all .3s}
+  #fsBtn.ok{display:flex}
+  #fsBtn i{font-style:normal; font-size:18px; line-height:1}
+  #fsBtn.compact{width:40px; padding:0; justify-content:center}
+  #fsBtn.compact span{display:none}
+
+  #fsTip{position:fixed; top:66px; right:14px; z-index:16; max-width:260px; padding:12px 16px; border-radius:12px; text-align:center;
+    background:linear-gradient(180deg,#f3dcae,#c9a26b); color:#2a0b14; font-family:var(--serif); font-size:16px; line-height:1.35;
+    box-shadow:0 10px 26px rgba(0,0,0,.45); opacity:0; transform:translateY(-8px); pointer-events:none; transition:opacity .5s, transform .5s}
+  #fsTip::before{content:""; position:absolute; top:-8px; right:28px; border:8px solid transparent; border-top:0; border-bottom-color:#f3dcae}
+  #fsTip.show{opacity:1; transform:none}
+  #fsTip b{font-weight:600}
+  @keyframes tipBob{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
   /* ---------- CARTA ---------- */
   main{position:relative; z-index:1; opacity:0; transition:opacity 1.4s ease}
   main.show{opacity:1}
@@ -228,6 +254,8 @@
 <canvas id="sky"></canvas>
 <audio id="music" src="musica.mp3" loop preload="auto"></audio>
 <button id="musicBtn" aria-label="Música">♪</button>
+<button id="fsBtn" aria-label="Pantalla completa"><i>⛶</i><span>Pantalla completa</span></button>
+<div id="fsTip">Para que lo disfrutes mejor,<br>ábrelo en <b>pantalla completa</b>&nbsp;♥</div>
 
 <!-- SOBRE -->
 <div id="intro">
@@ -248,6 +276,15 @@
     <div class="lock-count"><div><b id="lH">00</b><span>horas</span></div><div><b id="lM">00</b><span>min</span></div><div><b id="lS">00</b><span>seg</span></div></div>
     <div class="lock-toast" id="lockToast">Todavía no, mi amor… ♥</div>
   </div>
+</div>
+
+<div id="pv" role="dialog" aria-modal="true">
+  <form id="pvForm" autocomplete="off">
+    <div class="pv-t">🔒</div>
+    <input id="pvIn" type="password" placeholder="Contraseña" aria-label="Contraseña">
+    <div class="pv-err" id="pvErr">&nbsp;</div>
+    <div class="pv-b"><button type="button" class="btn ghost" id="pvNo">Cancelar</button><button type="submit" class="btn ghost on">Entrar</button></div>
+  </form>
 </div>
 
 <main id="main">
@@ -413,7 +450,9 @@ CONFIG.momentos.forEach((m,i) => {
 // ---- Abrir sobre
 const env = $("envelope");
 const OPEN_AT = new Date(CONFIG.abreEn).getTime();
-const isLocked = () => Date.now() < OPEN_AT && location.hash !== "#preview";
+let adminOpen = false;
+try{ adminOpen = sessionStorage.getItem("pv") === "1"; }catch(e){}
+const isLocked = () => Date.now() < OPEN_AT && !adminOpen;
 function lockTick(){
   if (!isLocked()){ document.body.classList.remove("is-locked"); return true; }
   document.body.classList.add("is-locked");
@@ -439,6 +478,7 @@ function openLetter(){
     $("intro").classList.add("gone");
     document.body.classList.remove("locked");
     $("main").classList.add("show");
+    $("fsBtn").classList.add("compact"); $("fsTip").classList.remove("show");
     window.scrollTo(0,0);
     startReveal();
   }, 2300);
@@ -460,6 +500,57 @@ function startMusic(){
 }
 mBtn.addEventListener("click", () => { if (music.paused){ music.volume = .7; music.play().then(setMusicUI).catch(()=>{}); } else { music.pause(); setMusicUI(); } });
 music.addEventListener("pause", setMusicUI); music.addEventListener("play", setMusicUI);
+
+
+// ---- Acceso secreto (5 toques en el nombre)
+(function(){
+  const HASH = "a686c9ec9da1dbfd91ef01c85a46bd0f7f60a1ce513c11f655ea4cd8bc4090c4";
+  let taps = 0, tt;
+  $("toName").addEventListener("click", () => {
+    taps++; clearTimeout(tt); tt = setTimeout(() => taps = 0, 1500);
+    if (taps >= 5){ taps = 0; $("pv").classList.add("open"); $("pvErr").innerHTML = "&nbsp;"; $("pvIn").value = ""; setTimeout(() => $("pvIn").focus(), 50); }
+  });
+  $("pvNo").addEventListener("click", () => $("pv").classList.remove("open"));
+  async function sha(t){
+    const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+    return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join("");
+  }
+  $("pvForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    let ok = false;
+    try{ ok = (await sha("lisbeth-4-" + $("pvIn").value.trim())) === HASH; }catch(err){}
+    if (ok){
+      adminOpen = true; try{ sessionStorage.setItem("pv","1"); }catch(err){}
+      $("pv").classList.remove("open"); lockTick(); openLetter();
+    } else {
+      $("pvErr").textContent = "Mmm, no es esa"; const f = $("pvForm"); f.classList.remove("bad"); void f.offsetWidth; f.classList.add("bad");
+    }
+  });
+})();
+
+
+// ---- Pantalla completa
+(function(){
+  const b = $("fsBtn"), d = document, el = d.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  const fsEl = () => d.fullscreenElement || d.webkitFullscreenElement;
+  if (!req) return;                       // iPhone no lo permite: el botón no aparece
+  b.classList.add("ok");
+  const ui = () => { const on = !!fsEl(); b.querySelector("i").textContent = on ? "✕" : "⛶"; b.querySelector("span").textContent = on ? "Salir" : "Pantalla completa"; };
+  const tip = $("fsTip"), hideTip = () => tip.classList.remove("show");
+  b.addEventListener("click", async () => {
+    hideTip();
+    try{
+      if (fsEl()) await (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+      else await req.call(el);
+    }catch(e){ b.classList.remove("ok"); }
+  });
+  let tipT;
+  const showTip = () => { clearTimeout(tipT); tip.classList.add("show"); tipT = setTimeout(hideTip, 5000); };
+  const onChange = () => { ui(); if (fsEl()) hideTip(); else showTip(); };
+  setTimeout(() => { if (!fsEl()) showTip(); }, 1200);   // al entrar al link
+  d.addEventListener("fullscreenchange", onChange); d.addEventListener("webkitfullscreenchange", onChange);
+})();
 
 // ---- Aparición al hacer scroll (escalonada)
 function startReveal(){
